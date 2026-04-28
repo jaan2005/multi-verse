@@ -168,8 +168,8 @@ export default function App() {
   const fetchGroqWithBackoff = async (payload, maxRetries = 3) => {
     // 🌟 SECURE API KEY LOAD 🌟
     // FOR YOUR LOCAL PC: Change the line below to use your .env file like this:
-    // const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    const apiKey = ""; 
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    
     
     if (!apiKey || apiKey.trim() === "") {
       throw new Error("API_KEY_MISSING");
