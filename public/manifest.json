@@ -1,0 +1,22 @@
+{
+  "name": "Otaku Verse",
+  "short_name": "Otaku Verse",
+  "description": "Chat with legendary anime characters.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05050a",
+  "theme_color": "#05050a",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8066/8066115.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8066/8066115.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
