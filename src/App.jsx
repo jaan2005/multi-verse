@@ -14,10 +14,15 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(''); // 🌟 NEW: Track Server Errors
   
   // Session Management State
   // Structure: [{ id: number, character: object, history: array }]
-  const [sessions, setSessions] = useState([]); 
+  const [sessions, setSessions] = useState(() => {
+    // 🌟 Check for saved chats when the app first loads!
+    const savedSessions = localStorage.getItem('otakuverse_sessions');
+    return savedSessions ? JSON.parse(savedSessions) : [];
+  }); 
   const [activeSessionId, setActiveSessionId] = useState(null);
   
   const [inputMessage, setInputMessage] = useState('');
@@ -38,6 +43,11 @@ export default function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
+
+  // 🌟 Automatically save chats to the browser whenever a new message is sent
+  useEffect(() => {
+    localStorage.setItem('otakuverse_sessions', JSON.stringify(sessions));
+  }, [sessions]);
 
   // Handle daily message limits persistence
   useEffect(() => {
@@ -95,6 +105,7 @@ export default function App() {
         performSearch(searchQuery);
       } else if (!searchQuery.trim()) {
         setSearchResults([]); // Clear results if input is empty
+        setSearchError('');
       }
     }, 500); // Waits 500ms after you stop typing before searching
 
@@ -103,8 +114,14 @@ export default function App() {
 
   const performSearch = async (query) => {
     setIsSearching(true);
+    setSearchError(''); // Clear previous errors
     try {
       const response = await fetch(`https://api.jikan.moe/v4/characters?q=${encodeURIComponent(query)}&limit=15&order_by=favorites&sort=desc`);
+      
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
       const data = await response.json();
       
       if (data && data.data) {
@@ -112,6 +129,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error fetching characters:", error);
+      setSearchError("The Anime Database server is currently offline or overloaded. Please try again in a few minutes!");
     } finally {
       setIsSearching(false);
     }
@@ -124,6 +142,7 @@ export default function App() {
 
   const selectCharacter = async (character) => {
     setIsSearching(true);
+    setSearchError('');
     try {
       // 1. Check if we already have a chat session with this character
       const existingSession = sessions.find(s => s.id === character.mal_id);
@@ -138,6 +157,11 @@ export default function App() {
 
       // 2. If new, fetch full details to get their personality
       const response = await fetch(`https://api.jikan.moe/v4/characters/${character.mal_id}/full`);
+      
+      if (!response.ok) {
+         throw new Error(`Server returned ${response.status}`);
+      }
+
       const data = await response.json();
       const fullCharData = data.data || character; 
       
@@ -160,6 +184,8 @@ export default function App() {
       
     } catch (error) {
       console.error("Error setting up character:", error);
+      // If the database fails when clicking a character, tell the user!
+      setSearchError("Failed to load character data from the database server. It might be down!");
     } finally {
       setIsSearching(false);
     }
@@ -169,7 +195,7 @@ export default function App() {
     // 🌟 SECURE API KEY LOAD 🌟
     // FOR YOUR LOCAL PC: Change the line below to use your .env file like this:
     const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    
+    // const apiKey = ""; 
     
     if (!apiKey || apiKey.trim() === "") {
       throw new Error("API_KEY_MISSING");
@@ -466,7 +492,7 @@ export default function App() {
           </div>
           
           {/* Energy/Token counter pill */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold tracking-wide transition-colors ${
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold tracking-wide transition-colors mr-14 md:mr-16 ${
             isLimitReached 
               ? 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
               : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
@@ -539,8 +565,17 @@ export default function App() {
                 </button>
               </form>
 
+              {/* 🌟 NEW: Server Error Message UI */}
+              {searchError && (
+                <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center backdrop-blur-md animate-in fade-in">
+                  <p className="text-red-400 font-medium text-sm md:text-base">
+                    ⚠️ {searchError}
+                  </p>
+                </div>
+              )}
+
               <div className="flex-1 overflow-y-auto pb-6 custom-scrollbar pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5 content-start">
-                {searchResults.length === 0 && !isSearching && searchQuery && (
+                {searchResults.length === 0 && !isSearching && !searchError && searchQuery && (
                   <div className="col-span-full text-center text-slate-400 mt-12 bg-white/5 p-6 md:p-10 rounded-2xl border border-white/5 backdrop-blur-md text-lg">
                     No heroes or villains found. Check the spelling!
                   </div>
@@ -706,7 +741,7 @@ export default function App() {
       {/* --- Floating Install App Button --- */}
       <button
         onClick={handleInstallClick}
-        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white rounded-full p-4 shadow-[0_0_20px_rgba(236,72,153,0.4)] transition-all hover:scale-110 active:scale-95 flex items-center justify-center group"
+        className="fixed top-6 right-6 z-50 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white rounded-full p-4 shadow-[0_0_20px_rgba(236,72,153,0.4)] transition-all hover:scale-110 active:scale-95 flex items-center justify-center group"
         title="Download / Install App"
       >
         <Download size={24} className="group-hover:-translate-y-1 transition-transform" />
@@ -714,7 +749,7 @@ export default function App() {
 
       {/* Manual Install Instructions Toast (For iOS/Safari) */}
       {showInstallPrompt && (
-        <div className="fixed bottom-24 right-6 z-50 bg-black/80 backdrop-blur-md border border-white/10 text-white p-4 rounded-2xl shadow-2xl max-w-[280px] animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed top-24 right-6 z-50 bg-black/80 backdrop-blur-md border border-white/10 text-white p-4 rounded-2xl shadow-2xl max-w-[280px] animate-in fade-in slide-in-from-top-4">
           <p className="text-sm font-bold mb-2 text-pink-300">Install Otaku Verse</p>
           <ul className="text-xs text-slate-300 space-y-2 list-disc pl-4">
             <li><strong>iPhone/iOS:</strong> Tap the Share icon <span className="inline-block border border-slate-500 rounded px-1 mx-0.5">↑</span> at the bottom of Safari, then select <strong>"Add to Home Screen"</strong>.</li>
