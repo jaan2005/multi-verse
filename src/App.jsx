@@ -273,21 +273,29 @@ export default function App() {
       // Pass the updated history (including the message we just added)
       const currentHistory = [...activeSession.history, userMsg];
       
+      // 🌟 FIX 1: "Short Term Memory" 
+      // Keep full history on screen, but only send the last 20 messages to the AI.
+      const MAX_MEMORY = 20;
+      const recentHistory = currentHistory.slice(-MAX_MEMORY);
+      
       const messages = [
         { role: 'system', content: systemPrompt },
         // Inject this hidden user action so the API doesn't throw a format error
         { role: 'user', content: '*Approaches you*' }, 
-        ...currentHistory.map(msg => ({
+        ...recentHistory.map(msg => ({
           role: msg.role === 'user' ? 'user' : 'assistant',
           content: msg.text || "*silence*"
         }))
       ];
 
       const payload = {
-        model: "llama-3.1-8b-instant", // 🌟 FIX: Switched to a safer, faster model with higher free-tier limits
+        model: "llama-3.1-8b-instant",
         messages: messages,
         temperature: 0.8,
-        max_tokens: 1024,
+        // 🌟 FIX 2: Lower max_tokens
+        // Reduced from 1024 down to 400. Characters rarely speak more than a paragraph,
+        // so this instantly frees up over 600 tokens per request!
+        max_tokens: 400, 
       };
 
       const result = await fetchGroqWithBackoff(payload);
@@ -523,7 +531,7 @@ export default function App() {
               </h2>
               
               <p className="text-slate-300 max-w-md md:max-w-xl lg:max-w-2xl mx-auto text-sm md:text-lg leading-relaxed mb-8 drop-shadow-md font-medium bg-black/30 p-4 rounded-xl backdrop-blur-sm border border-white/5">
-                Enter the multiverse. Chat, roleplay, and live your anime dreams with legendary characters powered by JAAN.
+                Enter the multiverse. Chat, roleplay, and live your anime dreams with legendary characters powered by AI.
               </p>
 
               <button 
